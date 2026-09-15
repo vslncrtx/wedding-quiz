@@ -28,31 +28,46 @@
 
   <script>
     const socket = io();
-    let hasVotedCurrent = false;
 
     socket.on('state-update', (data) => {
-      hasVotedCurrent = false;
       document.getElementById('q-title').innerText = data.question.title;
-      document.getElementById('status-text').innerText = `Вопрос ${data.index + 1} из ${data.total}`;
       
       const box = document.getElementById('options-box');
       box.innerHTML = '';
       
+      // Проверяем, голосовал ли уже этот телефон за данный вопрос
+      const savedVote = localStorage.getItem('voted_q_' + data.index);
+
       const letters = ['А', 'Б', 'В', 'Г'];
       data.question.options.forEach((opt, idx) => {
         const btn = document.createElement('button');
         btn.innerHTML = `<strong>${letters[idx]}:</strong> ${opt}`;
-        btn.onclick = () => {
-          if (!hasVotedCurrent) {
-            hasVotedCurrent = true;
+        
+        if (savedVote !== null) {
+          // Если уже голосовал — блокируем кнопки и подсвечиваем его выбор
+          btn.disabled = true;
+          if (parseInt(savedVote, 10) === idx) {
+            btn.classList.add('selected');
+          }
+        } else {
+          // Если еще не голосовал — разрешаем нажать
+          btn.onclick = () => {
+            // Запоминаем в памяти браузера
+            localStorage.setItem('voted_q_' + data.index, idx);
             btn.classList.add('selected');
             Array.from(box.children).forEach(b => b.disabled = true);
             document.getElementById('status-text').innerText = "Голос принят! Смотри на экран 🎉";
             socket.emit('cast-vote', idx);
-          }
-        };
+          };
+        }
         box.appendChild(btn);
       });
+
+      if (savedVote !== null) {
+        document.getElementById('status-text').innerText = "Вы уже проголосовали! Смотрите на экран 🎉";
+      } else {
+        document.getElementById('status-text').innerText = `Вопрос ${data.index + 1} из ${data.total}`;
+      }
     });
   </script>
 </body>
