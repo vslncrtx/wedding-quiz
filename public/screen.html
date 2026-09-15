@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Большой экран — Свадебное голосование</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: #111827; color: white; margin: 0; padding: 40px;
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      min-height: 100vh; overflow: hidden;
+    }
+    h1 { font-size: 38px; text-align: center; max-width: 1200px; margin: 0 0 20px 0; color: #f9fafb; }
+    .content { display: flex; width: 100%; max-width: 1400px; justify-content: space-around; align-items: center; flex: 1; }
+    .chart-container { width: 550px; height: 550px; position: relative; }
+    .legend-box { display: flex; flex-direction: column; gap: 18px; max-width: 650px; font-size: 22px; }
+    .legend-item { display: flex; align-items: center; gap: 15px; }
+    .badge {
+      width: 40px; height: 40px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;
+    }
+    .total-votes { font-size: 24px; color: #9ca3af; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1 id="question-text">Ожидание начала...</h1>
+  
+  <div class="content">
+    <div class="legend-box" id="legend"></div>
+    <div class="chart-container">
+      <canvas id="voteChart"></canvas>
+    </div>
+  </div>
+
+  <div class="total-votes" id="votes-counter">Всего голосов: 0</div>
+
+  <script>
+    const socket = io();
+    const colors = ['#f87171', '#60a5fa', '#34d399', '#fbbf24'];
+    const letters = ['А', 'Б', 'В', 'Г'];
+    let chart;
+
+    function initChart(labelsCount) {
+      const ctx = document.getElementById('voteChart').getContext('2d');
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: letters.slice(0, labelsCount),
+          datasets: [{
+            data: new Array(labelsCount).fill(0),
+            backgroundColor: colors.slice(0, labelsCount),
+            borderWidth: 3,
+            borderColor: '#111827'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 400 },
+          plugins: { legend: { display: false } },
+          cutout: '65%'
+        }
+      });
+    }
+
+    socket.on('state-update', (data) => {
+      document.getElementById('question-text').innerText = data.question.title;
+      
+      const legend = document.getElementById('legend');
+      legend.innerHTML = '';
+      data.question.options.forEach((opt, idx) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `
+          <div class="badge" style="background:${colors[idx]}">${letters[idx]}</div>
+          <div>${opt}</div>
+        `;
+        legend.appendChild(item);
+      });
+
+      initChart(data.question.options.length);
+      updateVotes(data.votes);
+    });
+
+    socket.on('votes-update', (votesObj) => {
+      updateVotes(votesObj);
+    });
+
+    function updateVotes(votesObj) {
+      const values = Object.values(votesObj);
+      const sum = values.reduce((a, b) => a + b, 0);
+      document.getElementById('votes-counter').innerText = `Всего голосов: ${sum}`;
+
+      if (chart) {
+        chart.data.datasets[0].data = values;
+        chart.update();
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Свадебный совет</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #fdfbf7; color: #2d3748; margin: 0; padding: 20px; display: flex; flex-direction: column; min-height: 100vh; }
+    h2 { font-size: 20px; line-height: 1.4; text-align: center; margin-bottom: 25px; color: #1a202c; }
+    .options { display: flex; flex-direction: column; gap: 12px; }
+    button {
+      background: white; border: 2px solid #e2e8f0; border-radius: 14px; padding: 16px;
+      font-size: 16px; text-align: left; cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04); color: #4a5568; line-height: 1.3;
+    }
+    button:active { transform: scale(0.98); }
+    button.selected { border-color: #e53e3e; background: #fff5f5; font-weight: bold; color: #c53030; }
+    button:disabled { opacity: 0.7; cursor: default; }
+    .footer { text-align: center; margin-top: auto; padding-top: 20px; font-size: 14px; color: #a0aec0; }
+  </style>
+</head>
+<body>
+  <h2 id="q-title">Загрузка вопроса...</h2>
+  <div class="options" id="options-box"></div>
+  <div class="footer" id="status-text">Свадебный батл взглядов 💕</div>
+
+  <script>
+    const socket = io();
+    let hasVotedCurrent = false;
+
+    socket.on('state-update', (data) => {
+      hasVotedCurrent = false;
+      document.getElementById('q-title').innerText = data.question.title;
+      document.getElementById('status-text').innerText = `Вопрос ${data.index + 1} из ${data.total}`;
+      
+      const box = document.getElementById('options-box');
+      box.innerHTML = '';
+      
+      const letters = ['А', 'Б', 'В', 'Г'];
+      data.question.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = `<strong>${letters[idx]}:</strong> ${opt}`;
+        btn.onclick = () => {
+          if (!hasVotedCurrent) {
+            hasVotedCurrent = true;
+            btn.classList.add('selected');
+            Array.from(box.children).forEach(b => b.disabled = true);
+            document.getElementById('status-text').innerText = "Голос принят! Смотри на экран 🎉";
+            socket.emit('cast-vote', idx);
+          }
+        };
+        box.appendChild(btn);
+      });
+    });
+  </script>
+</body>
+</html>
