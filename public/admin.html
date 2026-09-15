@@ -2,25 +2,92 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Пульт управления</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Пульт викторины</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-    button { padding: 20px; font-size: 20px; border-radius: 12px; border: none; cursor: pointer; }
-    .next { background: #10b981; color: white; }
-    .prev { background: #6b7280; color: white; }
-    .reset { background: #ef4444; color: white; }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: #f8fafc; color: #1e293b;
+      margin: 0; padding: 20px;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .header { text-align: center; margin-bottom: 12px; }
+    .badge {
+      display: inline-block; background: #e2e8f0; color: #475569;
+      padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 15px;
+    }
+    .current-question {
+      background: white; border: 2px solid #cbd5e1; border-radius: 16px;
+      padding: 18px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .current-question h3 {
+      margin: 0 0 10px 0; font-size: 18px; line-height: 1.4; color: #0f172a;
+    }
+    .votes-stat { font-size: 15px; color: #0284c7; font-weight: 600; }
+    .btn-grid { display: flex; flex-direction: column; gap: 14px; }
+    button {
+      padding: 18px; font-size: 18px; border-radius: 14px; border: none;
+      font-weight: 600; cursor: pointer; transition: transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    button:active { transform: scale(0.98); }
+    .next { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+    .prev { background: #64748b; color: white; }
+    .reset { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; margin-top: 15px; padding: 14px; font-size: 15px; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
   </style>
 </head>
 <body>
-  <h2>Пульт викторины</h2>
-  <button class="next" onclick="socket.emit('admin-next')">👉 Следующий вопрос</button>
-  <button class="prev" onclick="socket.emit('admin-prev')">👈 Предыдущий вопрос</button>
-  <button class="reset" onclick="socket.emit('admin-reset')">🔄 Сбросить голоса</button>
+  <div class="header">
+    <div class="badge" id="q-counter">Вопрос ... из ...</div>
+  </div>
+
+  <div class="current-question">
+    <h3 id="q-title">Загрузка вопроса...</h3>
+    <div class="votes-stat" id="q-votes">👥 Проголосовало: 0</div>
+  </div>
+
+  <div class="btn-grid">
+    <button class="next" id="btn-next" onclick="socket.emit('admin-next')">
+      👉 Следующий вопрос
+    </button>
+    <button class="prev" id="btn-prev" onclick="socket.emit('admin-prev')">
+      👈 Предыдущий вопрос
+    </button>
+    <button class="reset" onclick="confirmReset()">
+      🔄 Сбросить голоса текущего вопроса
+    </button>
+  </div>
 
   <script>
     const socket = io();
+
+    function updateVotesCount(votesObj) {
+      if (!votesObj) return;
+      const sum = Object.values(votesObj).reduce((a, b) => a + b, 0);
+      document.getElementById('q-votes').innerText = `👥 Проголосовало: ${sum}`;
+    }
+
+    socket.on('state-update', (data) => {
+      document.getElementById('q-counter').innerText = `Вопрос ${data.index + 1} из ${data.total}`;
+      document.getElementById('q-title').innerText = data.question.title;
+      updateVotesCount(data.votes);
+
+      // Блокируем стрелки в начале и в конце
+      document.getElementById('btn-prev').disabled = (data.index === 0);
+      document.getElementById('btn-next').disabled = (data.index === data.total - 1);
+    });
+
+    socket.on('votes-update', (votesObj) => {
+      updateVotesCount(votesObj);
+    });
+
+    function confirmReset() {
+      if (confirm("Точно сбросить результаты этого вопроса?")) {
+        socket.emit('admin-reset');
+      }
+    }
   </script>
 </body>
 </html>
