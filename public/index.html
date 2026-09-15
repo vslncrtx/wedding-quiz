@@ -35,8 +35,8 @@
       const box = document.getElementById('options-box');
       box.innerHTML = '';
       
-      // Проверяем, голосовал ли уже этот телефон за данный вопрос
-      const savedVote = localStorage.getItem('voted_q_' + data.index);
+      // Проверяем голос по уникальному ключу раунда data.voteId
+      const savedVote = localStorage.getItem('voted_' + data.voteId);
 
       const letters = ['А', 'Б', 'В', 'Г'];
       data.question.options.forEach((opt, idx) => {
@@ -44,16 +44,13 @@
         btn.innerHTML = `<strong>${letters[idx]}:</strong> ${opt}`;
         
         if (savedVote !== null) {
-          // Если уже голосовал — блокируем кнопки и подсвечиваем его выбор
           btn.disabled = true;
           if (parseInt(savedVote, 10) === idx) {
             btn.classList.add('selected');
           }
         } else {
-          // Если еще не голосовал — разрешаем нажать
           btn.onclick = () => {
-            // Запоминаем в памяти браузера
-            localStorage.setItem('voted_q_' + data.index, idx);
+            localStorage.setItem('voted_' + data.voteId, idx);
             btn.classList.add('selected');
             Array.from(box.children).forEach(b => b.disabled = true);
             document.getElementById('status-text').innerText = "Голос принят! Смотри на экран 🎉";
