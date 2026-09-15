@@ -7,10 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Раздача файлов с авто-поддержкой html
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
-// Прямые роуты для экрана и пульта
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -23,7 +21,7 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Топ-11 вопросов
+// 11 вычитанных вопросов
 const questions = [
   {
     title: "1. Носки у кровати: преступление или элемент декора?",
@@ -126,6 +124,7 @@ const questions = [
 
 let currentIndex = 0;
 let votes = {};
+let resetCounter = {}; // Счетчик сбросов для каждого вопроса
 
 function initVotesFor(index) {
   if (!votes[index]) {
@@ -133,6 +132,7 @@ function initVotesFor(index) {
     questions[index].options.forEach((_, optIdx) => {
       votes[index][optIdx] = 0;
     });
+    resetCounter[index] = 0;
   }
 }
 initVotesFor(currentIndex);
@@ -143,7 +143,8 @@ function getPayload() {
     index: currentIndex,
     total: questions.length,
     question: questions[currentIndex],
-    votes: votes[currentIndex]
+    votes: votes[currentIndex],
+    voteId: `${currentIndex}_${resetCounter[currentIndex] || 0}` // Уникальный идентификатор раунда
   };
 }
 
@@ -175,11 +176,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin-reset', () => {
-    votes[currentIndex] = {};
+    initVotesFor(currentIndex);
     questions[currentIndex].options.forEach((_, optIdx) => {
       votes[currentIndex][optIdx] = 0;
     });
+    // Увеличиваем счетчик сброса, чтобы у всех гостей обновился ключ
+    resetCounter[currentIndex] = (resetCounter[currentIndex] || 0) + 1;
+    
     io.emit('votes-update', votes[currentIndex]);
+    io.emit('state-update', getPayload()); // Отправляем сигнал всем телефонам разблокироваться
   });
 });
 
