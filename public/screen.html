@@ -7,21 +7,86 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    
     body {
-      background: #111827; color: white; margin: 0; padding: 40px;
+      margin: 0; padding: 40px;
       display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-      min-height: 100vh; overflow: hidden;
+      min-height: 100vh; overflow: hidden; color: white;
+      background-color: #0b0f19;
+      background-image: 
+        radial-gradient(circle at 50% 20%, rgba(30, 41, 59, 0.7) 0%, rgba(11, 15, 25, 0.95) 100%),
+        url('/bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
-    h1 { font-size: 38px; text-align: center; max-width: 1200px; margin: 0 0 20px 0; color: #f9fafb; }
-    .content { display: flex; width: 100%; max-width: 1400px; justify-content: space-around; align-items: center; flex: 1; }
-    .chart-container { width: 550px; height: 550px; position: relative; }
-    .legend-box { display: flex; flex-direction: column; gap: 18px; max-width: 650px; font-size: 22px; }
+
+    h1 {
+      font-size: 38px; text-align: center; max-width: 1250px; margin: 0 0 20px 0; color: #ffffff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6); line-height: 1.3;
+    }
+    
+    .content {
+      display: flex; width: 100%; max-width: 1400px;
+      justify-content: space-around; align-items: center; flex: 1;
+    }
+    
+    .legend-box {
+      display: flex; flex-direction: column; gap: 16px; max-width: 650px; font-size: 22px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 30px; border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    
     .legend-item { display: flex; align-items: center; gap: 15px; }
+    
     .badge {
-      width: 40px; height: 40px; border-radius: 50%; display: flex;
+      width: 42px; height: 42px; border-radius: 50%; display: flex;
       align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
-    .total-votes { font-size: 24px; color: #9ca3af; margin-top: 10px; }
+    
+    /* Контейнер графика и картинки */
+    .chart-container {
+      width: 530px; height: 530px; position: relative;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 50%;
+      padding: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Круглая картинка по центру */
+    .chart-center-img {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      object-fit: cover; /* Любая картинка ровно вписывается в круг! */
+      object-position: center;
+      z-index: 1;
+      border: 4px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.7);
+      transition: opacity 0.3s ease;
+    }
+
+    /* Холст диаграммы поверх картинки */
+    canvas#voteChart {
+      position: relative;
+      z-index: 2;
+    }
+
+    .total-votes {
+      font-size: 24px; color: #f1f5f9; margin-top: 15px; font-weight: 500;
+      background: rgba(0, 0, 0, 0.4); padding: 8px 24px; border-radius: 20px;
+      backdrop-filter: blur(8px);
+    }
   </style>
 </head>
 <body>
@@ -30,6 +95,7 @@
   <div class="content">
     <div class="legend-box" id="legend"></div>
     <div class="chart-container">
+      <img id="question-img" class="chart-center-img" src="" alt="Иллюстрация">
       <canvas id="voteChart"></canvas>
     </div>
   </div>
@@ -38,8 +104,9 @@
 
   <script>
     const socket = io({
-  transports: ['websocket', 'polling']
-});
+      transports: ['websocket', 'polling']
+    });
+
     const colors = ['#f87171', '#60a5fa', '#34d399', '#fbbf24'];
     const letters = ['А', 'Б', 'В', 'Г'];
     let chart;
@@ -55,8 +122,8 @@
           datasets: [{
             data: new Array(labelsCount).fill(0),
             backgroundColor: colors.slice(0, labelsCount),
-            borderWidth: 3,
-            borderColor: '#111827'
+            borderWidth: 4,
+            borderColor: '#0b0f19'
           }]
         },
         options: {
@@ -64,7 +131,7 @@
           maintainAspectRatio: false,
           animation: { duration: 400 },
           plugins: { legend: { display: false } },
-          cutout: '65%'
+          cutout: '66%' /* Идеальный вырез под круглую картинку */
         }
       });
     }
@@ -72,6 +139,15 @@
     socket.on('state-update', (data) => {
       document.getElementById('question-text').innerText = data.question.title;
       
+      // Обновляем картинку по центру
+      const img = document.getElementById('question-img');
+      if (data.question.image) {
+        img.src = data.question.image;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+      }
+
       const legend = document.getElementById('legend');
       legend.innerHTML = '';
       data.question.options.forEach((opt, idx) => {
