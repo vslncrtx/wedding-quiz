@@ -9,7 +9,7 @@
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
     body {
-      margin: 0; padding: 40px;
+      margin: 0; padding: 30px 40px;
       display: flex; flex-direction: column; align-items: center; justify-content: space-between;
       min-height: 100vh; overflow: hidden; color: white;
       background-color: #0b0f19;
@@ -21,8 +21,14 @@
       background-repeat: no-repeat;
     }
 
+    /* ЭКРАН ВОПРОСА */
+    #quiz-view {
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      width: 100%; height: 100%; flex: 1;
+    }
+
     h1 {
-      font-size: 38px; text-align: center; max-width: 1250px; margin: 0 0 20px 0; color: #ffffff;
+      font-size: 38px; text-align: center; max-width: 1250px; margin: 0 0 15px 0; color: #ffffff;
       text-shadow: 0 2px 12px rgba(0,0,0,0.6); line-height: 1.3;
     }
     
@@ -49,7 +55,6 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
     
-    /* Контейнер графика и картинки */
     .chart-container {
       width: 530px; height: 530px; position: relative;
       display: flex; align-items: center; justify-content: center;
@@ -62,51 +67,102 @@
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
 
-    /* Круглая картинка по центру */
     .chart-center-img {
       position: absolute;
-      width: 320px;
-      height: 320px;
-      border-radius: 50%;
-      object-fit: cover; /* Любая картинка ровно вписывается в круг! */
-      object-position: center;
-      z-index: 1;
-      border: 4px solid rgba(255, 255, 255, 0.25);
+      width: 320px; height: 320px; border-radius: 50%;
+      object-fit: cover; object-position: center;
+      z-index: 1; border: 4px solid rgba(255, 255, 255, 0.25);
       box-shadow: 0 0 25px rgba(0, 0, 0, 0.7);
-      transition: opacity 0.3s ease;
     }
 
-    /* Холст диаграммы поверх картинки */
-    canvas#voteChart {
-      position: relative;
-      z-index: 2;
-    }
+    canvas#voteChart { position: relative; z-index: 2; }
 
     .total-votes {
       font-size: 24px; color: #f1f5f9; margin-top: 15px; font-weight: 500;
       background: rgba(0, 0, 0, 0.4); padding: 8px 24px; border-radius: 20px;
       backdrop-filter: blur(8px);
     }
+
+    /* ЭКРАН ИТОГОВ */
+    #final-view {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      width: 100%; max-width: 1450px; flex: 1; animation: fadeIn 0.8s ease;
+    }
+
+    .final-header {
+      font-size: 42px; font-weight: 800; text-align: center; margin-bottom: 5px;
+      background: linear-gradient(135deg, #fef08a, #f97316);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .final-sub { font-size: 22px; color: #cbd5e1; margin-bottom: 20px; text-align: center; }
+
+    .results-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .result-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px; padding: 12px 18px;
+      display: flex; align-items: center; justify-content: space-between; gap: 15px;
+    }
+
+    .result-card-left { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+    .card-q-title { font-size: 14px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-winner { font-size: 17px; font-weight: 600; color: #f8fafc; }
+
+    .card-percent {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white; font-weight: bold; font-size: 18px;
+      padding: 6px 14px; border-radius: 20px; flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+    }
+
+    .final-footer {
+      font-size: 26px; font-weight: 600; color: #fbcfe8;
+      background: rgba(0, 0, 0, 0.4); padding: 10px 30px; border-radius: 30px;
+      border: 1px solid rgba(244, 114, 182, 0.3);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
-  <h1 id="question-text">Ожидание начала...</h1>
-  
-  <div class="content">
-    <div class="legend-box" id="legend"></div>
-    <div class="chart-container">
-      <img id="question-img" class="chart-center-img" src="" alt="Иллюстрация">
-      <canvas id="voteChart"></canvas>
+
+  <!-- Блок обычного вопроса -->
+  <div id="quiz-view">
+    <h1 id="question-text">Ожидание начала...</h1>
+    
+    <div class="content">
+      <div class="legend-box" id="legend"></div>
+      <div class="chart-container">
+        <img id="question-img" class="chart-center-img" src="" alt="Иллюстрация">
+        <canvas id="voteChart"></canvas>
+      </div>
     </div>
+
+    <div class="total-votes" id="votes-counter">Всего голосов: 0</div>
   </div>
 
-  <div class="total-votes" id="votes-counter">Всего голосов: 0</div>
+  <!-- Блок финала с итогами -->
+  <div id="final-view">
+    <div class="final-header">🎉 СЕМЕЙНЫЙ СОВЕТ ВЫНЕС ВЕРДИКТ! 🎉</div>
+    <div class="final-sub">Большинство гостей утвердили правила совместной жизни:</div>
+    
+    <div class="results-grid" id="results-grid"></div>
+
+    <div class="final-footer" id="final-footer">Спасибо за участие! Совет да любовь 💕</div>
+  </div>
 
   <script>
-    const socket = io({
-      transports: ['websocket', 'polling']
-    });
-
+    const socket = io({ transports: ['websocket', 'polling'] });
     const colors = ['#f87171', '#60a5fa', '#34d399', '#fbbf24'];
     const letters = ['А', 'Б', 'В', 'Г'];
     let chart;
@@ -131,15 +187,47 @@
           maintainAspectRatio: false,
           animation: { duration: 400 },
           plugins: { legend: { display: false } },
-          cutout: '66%' /* Идеальный вырез под круглую картинку */
+          cutout: '66%'
         }
       });
     }
 
     socket.on('state-update', (data) => {
+      const quizView = document.getElementById('quiz-view');
+      const finalView = document.getElementById('final-view');
+
+      if (data.isFinished) {
+        // ПОКАЗЫВАЕМ ФИНАЛ
+        quizView.style.display = 'none';
+        finalView.style.display = 'flex';
+
+        const grid = document.getElementById('results-grid');
+        grid.innerHTML = '';
+
+        data.summary.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'result-card';
+          card.innerHTML = `
+            <div class="result-card-left">
+              <div class="card-q-title">${item.questionTitle}</div>
+              <div class="card-winner">👉 ${item.winnerOption}</div>
+            </div>
+            <div class="card-percent">${item.percent}%</div>
+          `;
+          grid.appendChild(card);
+        });
+
+        document.getElementById('final-footer').innerText = 
+          `Всего отдано ${data.totalAllVotes} голосов! Совет да любовь 💕`;
+        return;
+      }
+
+      // ПОКАЗЫВАЕМ ОБЫЧНЫЙ ВОПРОС
+      quizView.style.display = 'flex';
+      finalView.style.display = 'none';
+
       document.getElementById('question-text').innerText = data.question.title;
       
-      // Обновляем картинку по центру
       const img = document.getElementById('question-img');
       if (data.question.image) {
         img.src = data.question.image;
@@ -169,6 +257,7 @@
     });
 
     function updateVotes(votesObj) {
+      if (!votesObj) return;
       const values = Object.values(votesObj);
       const sum = values.reduce((a, b) => a + b, 0);
       document.getElementById('votes-counter').innerText = `Всего голосов: ${sum}`;
