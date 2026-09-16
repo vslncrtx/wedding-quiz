@@ -17,7 +17,7 @@ app.get('/screen', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'screen.html'));
 });
 
-app.get('/admin', (req, res) => {
+app.get('/pult', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
