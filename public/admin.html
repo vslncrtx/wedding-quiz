@@ -8,8 +8,7 @@
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body {
-      background: #f8fafc; color: #1e293b;
-      margin: 0; padding: 20px;
+      background: #f8fafc; color: #1e293b; margin: 0; padding: 20px;
       display: flex; flex-direction: column; min-height: 100vh;
     }
     .header { text-align: center; margin-bottom: 12px; }
@@ -21,9 +20,7 @@
       background: white; border: 2px solid #cbd5e1; border-radius: 16px;
       padding: 18px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
-    .current-question h3 {
-      margin: 0 0 10px 0; font-size: 18px; line-height: 1.4; color: #0f172a;
-    }
+    .current-question h3 { margin: 0 0 10px 0; font-size: 18px; line-height: 1.4; color: #0f172a; }
     .votes-stat { font-size: 15px; color: #0284c7; font-weight: 600; }
     .btn-grid { display: flex; flex-direction: column; gap: 14px; }
     button {
@@ -33,6 +30,7 @@
     }
     button:active { transform: scale(0.98); }
     .next { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+    .finish { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4); }
     .prev { background: #64748b; color: white; }
     .reset { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; margin-top: 15px; padding: 14px; font-size: 15px; }
     button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
@@ -40,11 +38,11 @@
 </head>
 <body>
   <div class="header">
-    <div class="badge" id="q-counter">Подключение к серверу...</div>
+    <div class="badge" id="q-counter">Подключение...</div>
   </div>
 
   <div class="current-question">
-    <h3 id="q-title">Загрузка данных...</h3>
+    <h3 id="q-title">Загрузка...</h3>
     <div class="votes-stat" id="q-votes">👥 Проголосовало: 0</div>
   </div>
 
@@ -55,17 +53,13 @@
     <button class="prev" id="btn-prev" onclick="socket.emit('admin-prev')">
       👈 Предыдущий вопрос
     </button>
-    <button class="reset" onclick="confirmReset()">
+    <button class="reset" id="btn-reset" onclick="confirmReset()">
       🔄 Сбросить голоса текущего вопроса
     </button>
   </div>
 
   <script>
-    const socket = io({
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
-      timeout: 10000
-    });
+    const socket = io({ transports: ['websocket', 'polling'] });
 
     function updateVotesCount(votesObj) {
       if (!votesObj) return;
@@ -74,19 +68,49 @@
     }
 
     socket.on('state-update', (data) => {
+      const btnNext = document.getElementById('btn-next');
+      const btnPrev = document.getElementById('btn-prev');
+      const btnReset = document.getElementById('btn-reset');
+
+      if (data.isFinished) {
+        document.getElementById('q-counter').innerText = `🎉 ФИНАЛ ВИКТОРИНЫ`;
+        document.getElementById('q-title').innerText = `Итоги выведены на большой экран!`;
+        document.getElementById('q-votes').innerText = `Всего ответов за игру: ${data.totalAllVotes}`;
+        
+        btnNext.disabled = true;
+        btnNext.innerText = `🏁 Викторина завершена`;
+        btnNext.className = 'next';
+
+        btnPrev.disabled = false;
+        btnPrev.innerText = `👈 Вернуться к вопросу 11`;
+        btnReset.style.display = 'none';
+        return;
+      }
+
+      btnReset.style.display = 'block';
+      btnPrev.innerText = `👈 Предыдущий вопрос`;
       document.getElementById('q-counter').innerText = `Вопрос ${data.index + 1} из ${data.total}`;
       document.getElementById('q-title').innerText = data.question.title;
       updateVotesCount(data.votes);
 
-      document.getElementById('btn-prev').disabled = (data.index === 0);
-      document.getElementById('btn-next').disabled = (data.index === data.total - 1);
+      btnPrev.disabled = (data.index === 0);
+
+      // Если это последний (11-й) вопрос:
+      if (data.index === data.total - 1) {
+        btnNext.disabled = false;
+        btnNext.innerText = `🏁 Показать финальные итоги!`;
+        btnNext.className = 'finish';
+      } else {
+        btnNext.disabled = false;
+        btnNext.innerText = `👉 Следующий вопрос`;
+        btnNext.className = 'next';
+      }
     });
 
     socket.on('votes-update', (votesObj) => {
       updateVotesCount(votesObj);
     });
 
-    // Автоматический реконнект при разблокировке экрана
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !socket.connected) {
         socket.connect();
