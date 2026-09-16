@@ -40,11 +40,11 @@
 </head>
 <body>
   <div class="header">
-    <div class="badge" id="q-counter">Вопрос ... из ...</div>
+    <div class="badge" id="q-counter">Подключение к серверу...</div>
   </div>
 
   <div class="current-question">
-    <h3 id="q-title">Загрузка вопроса...</h3>
+    <h3 id="q-title">Загрузка данных...</h3>
     <div class="votes-stat" id="q-votes">👥 Проголосовало: 0</div>
   </div>
 
@@ -61,7 +61,11 @@
   </div>
 
   <script>
-    const socket = io();
+    const socket = io({
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      timeout: 10000
+    });
 
     function updateVotesCount(votesObj) {
       if (!votesObj) return;
@@ -74,13 +78,19 @@
       document.getElementById('q-title').innerText = data.question.title;
       updateVotesCount(data.votes);
 
-      // Блокируем стрелки в начале и в конце
       document.getElementById('btn-prev').disabled = (data.index === 0);
       document.getElementById('btn-next').disabled = (data.index === data.total - 1);
     });
 
     socket.on('votes-update', (votesObj) => {
       updateVotesCount(votesObj);
+    });
+
+    // Автоматический реконнект при разблокировке экрана
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !socket.connected) {
+        socket.connect();
+      }
     });
 
     function confirmReset() {
