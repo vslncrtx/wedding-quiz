@@ -19,22 +19,48 @@
     button.selected { border-color: #e53e3e; background: #fff5f5; font-weight: bold; color: #c53030; }
     button:disabled { opacity: 0.7; cursor: default; }
     .footer { text-align: center; margin-top: auto; padding-top: 20px; font-size: 14px; color: #a0aec0; }
+
+    /* ФИНАЛЬНАЯ КАРТОЧКА НА ТЕЛЕФОНЕ */
+    #final-card {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 30px 20px; background: white; border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin-top: auto; margin-bottom: auto;
+    }
+    #final-card h1 { font-size: 28px; margin: 0 0 15px 0; }
+    #final-card p { font-size: 17px; line-height: 1.5; color: #4a5568; margin: 0 0 20px 0; }
+    .cheers { font-size: 50px; margin-bottom: 15px; }
   </style>
 </head>
 <body>
-  <h2 id="q-title">Загрузка вопроса...</h2>
-  <div class="options" id="options-box"></div>
-  <div class="footer" id="status-text">Свадебный батл взглядов 💕</div>
+  <div id="quiz-block">
+    <h2 id="q-title">Загрузка вопроса...</h2>
+    <div class="options" id="options-box"></div>
+    <div class="footer" id="status-text">Свадебный батл взглядов 💕</div>
+  </div>
+
+  <div id="final-card">
+    <div class="cheers">🥂🍾🎉</div>
+    <h1>Спасибо за участие!</h1>
+    <p>Вы помогли нам разрешить все главные споры! Теперь мы точно готовы к семейной жизни.</p>
+    <p><strong>Смотрите общий вердикт гостей на большом экране! 👉</strong></p>
+  </div>
 
   <script>
-    const socket = io({
-      transports: ['websocket', 'polling']
-    });
+    const socket = io({ transports: ['websocket', 'polling'] });
 
-    let lastVoteId = null;
+    socket.on('state-update', (data) => {
+      const quizBlock = document.getElementById('quiz-block');
+      const finalCard = document.getElementById('final-card');
 
-    function renderQuestion(data) {
-      lastVoteId = data.voteId;
+      if (data.isFinished) {
+        quizBlock.style.display = 'none';
+        finalCard.style.display = 'flex';
+        return;
+      }
+
+      quizBlock.style.display = 'block';
+      finalCard.style.display = 'none';
+
       document.getElementById('q-title').innerText = data.question.title;
       
       const box = document.getElementById('options-box');
@@ -69,18 +95,11 @@
       } else {
         document.getElementById('status-text').innerText = `Вопрос ${data.index + 1} из ${data.total}`;
       }
-    }
-
-    socket.on('state-update', (data) => {
-      renderQuestion(data);
     });
 
-    // Когда гость разблокирует айфон после сна, принудительно восстанавливаем связь:
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        if (!socket.connected) {
-          socket.connect();
-        }
+      if (document.visibilityState === 'visible' && !socket.connected) {
+        socket.connect();
       }
     });
   </script>
