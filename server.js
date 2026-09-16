@@ -7,6 +7,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 app.get('/', (req, res) => {
@@ -21,7 +28,6 @@ app.get('/pult', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// 11 вопросов с привязкой картинок
 const questions = [
   {
     title: "1. Носки у кровати: преступление или элемент декора?",
@@ -135,9 +141,10 @@ const questions = [
 
 let currentIndex = 0;
 let votes = {};
-let resetCounter = {}; // Счетчик сбросов для каждого вопроса
+let resetCounter = {};
 
 function initVotesFor(index) {
+  if (index >= questions.length) return;
   if (!votes[index]) {
     votes[index] = {};
     questions[index].options.forEach((_, optIdx) => {
@@ -149,13 +156,54 @@ function initVotesFor(index) {
 initVotesFor(currentIndex);
 
 function getPayload() {
+  const isFinished = (currentIndex === questions.length);
+
+  if (isFinished) {
+    let totalAllVotes = 0;
+    const summary = questions.map((q, qIdx) => {
+      const qVotes = votes[qIdx] || {};
+      const totalQVotes = Object.values(qVotes).reduce((a, b) => a + b, 0);
+      totalAllVotes += totalQVotes;
+
+      let winnerIdx = 0;
+      let maxVotes = -1;
+      q.options.forEach((opt, oIdx) => {
+        const c = qVotes[oIdx] || 0;
+        if (c > maxVotes) {
+          maxVotes = c;
+          winnerIdx = oIdx;
+        }
+      });
+
+      const letters = ['А', 'Б', 'В', 'Г'];
+      const percent = totalQVotes > 0 ? Math.round((maxVotes / totalQVotes) * 100) : 0;
+
+      return {
+        questionNumber: qIdx + 1,
+        questionTitle: q.title,
+        winnerLetter: letters[winnerIdx],
+        winnerOption: q.options[winnerIdx],
+        percent: percent,
+        votes: maxVotes
+      };
+    });
+
+    return {
+      isFinished: true,
+      total: questions.length,
+      summary: summary,
+      totalAllVotes: totalAllVotes
+    };
+  }
+
   initVotesFor(currentIndex);
   return {
+    isFinished: false,
     index: currentIndex,
     total: questions.length,
     question: questions[currentIndex],
     votes: votes[currentIndex],
-    voteId: `${currentIndex}_${resetCounter[currentIndex] || 0}` // Уникальный идентификатор раунда
+    voteId: `${currentIndex}_${resetCounter[currentIndex] || 0}`
   };
 }
 
@@ -163,6 +211,7 @@ io.on('connection', (socket) => {
   socket.emit('state-update', getPayload());
 
   socket.on('cast-vote', (optIndex) => {
+    if (currentIndex >= questions.length) return;
     initVotesFor(currentIndex);
     if (votes[currentIndex][optIndex] !== undefined) {
       votes[currentIndex][optIndex]++;
@@ -171,9 +220,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin-next', () => {
-    if (currentIndex < questions.length - 1) {
+    if (currentIndex <= questions.length - 1) {
       currentIndex++;
-      initVotesFor(currentIndex);
       io.emit('state-update', getPayload());
     }
   });
@@ -181,21 +229,19 @@ io.on('connection', (socket) => {
   socket.on('admin-prev', () => {
     if (currentIndex > 0) {
       currentIndex--;
-      initVotesFor(currentIndex);
       io.emit('state-update', getPayload());
     }
   });
 
   socket.on('admin-reset', () => {
+    if (currentIndex >= questions.length) return;
     initVotesFor(currentIndex);
     questions[currentIndex].options.forEach((_, optIdx) => {
       votes[currentIndex][optIdx] = 0;
     });
-    // Увеличиваем счетчик сброса, чтобы у всех гостей обновился ключ
     resetCounter[currentIndex] = (resetCounter[currentIndex] || 0) + 1;
-    
     io.emit('votes-update', votes[currentIndex]);
-    io.emit('state-update', getPayload()); // Отправляем сигнал всем телефонам разблокироваться
+    io.emit('state-update', getPayload());
   });
 });
 
