@@ -32,7 +32,8 @@
     .next { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
     .finish { background: #f59e0b; color: white; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4); }
     .prev { background: #64748b; color: white; }
-    .reset { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; margin-top: 15px; padding: 14px; font-size: 15px; }
+    .reset { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; padding: 14px; font-size: 15px; }
+    .reset-all { background: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; margin-top: 20px; padding: 12px; font-size: 14px; }
     button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
   </style>
 </head>
@@ -55,6 +56,9 @@
     </button>
     <button class="reset" id="btn-reset" onclick="confirmReset()">
       🔄 Сбросить голоса текущего вопроса
+    </button>
+    <button class="reset-all" onclick="confirmResetAll()">
+      ⚠️ Начать игру заново (сбросить ВСЁ)
     </button>
   </div>
 
@@ -95,7 +99,6 @@
 
       btnPrev.disabled = (data.index === 0);
 
-      // Если это последний (11-й) вопрос:
       if (data.index === data.total - 1) {
         btnNext.disabled = false;
         btnNext.innerText = `🏁 Показать финальные итоги!`;
@@ -120,6 +123,12 @@
     function confirmReset() {
       if (confirm("Точно сбросить результаты этого вопроса?")) {
         socket.emit('admin-reset');
+      }
+    }
+
+    function confirmResetAll() {
+      if (confirm("ВНИМАНИЕ! Вы точно хотите сбросить ВСЮ игру и начать с 1-го вопроса?")) {
+        socket.emit('admin-reset-all');
       }
     }
   </script>
