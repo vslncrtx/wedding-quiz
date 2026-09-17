@@ -141,7 +141,8 @@ const questions = [
 
 let currentIndex = 0;
 let votes = {};
-let resetCounter = {};
+let gameSessionId = Date.now(); // Уникальный ключ всей игры
+let questionTimestamps = {};   // Уникальный миллисекундный штамп для каждого вопроса
 
 function initVotesFor(index) {
   if (index >= questions.length) return;
@@ -150,7 +151,7 @@ function initVotesFor(index) {
     questions[index].options.forEach((_, optIdx) => {
       votes[index][optIdx] = 0;
     });
-    resetCounter[index] = 0;
+    questionTimestamps[index] = Date.now();
   }
 }
 initVotesFor(currentIndex);
@@ -197,13 +198,15 @@ function getPayload() {
   }
 
   initVotesFor(currentIndex);
+  const qStamp = questionTimestamps[currentIndex] || gameSessionId;
   return {
     isFinished: false,
     index: currentIndex,
     total: questions.length,
     question: questions[currentIndex],
     votes: votes[currentIndex],
-    voteId: `${currentIndex}_${resetCounter[currentIndex] || 0}`
+    // Уникальный ID раунда с миллисекундами:
+    voteId: `v_${gameSessionId}_${currentIndex}_${qStamp}`
   };
 }
 
@@ -222,6 +225,7 @@ io.on('connection', (socket) => {
   socket.on('admin-next', () => {
     if (currentIndex <= questions.length - 1) {
       currentIndex++;
+      initVotesFor(currentIndex);
       io.emit('state-update', getPayload());
     }
   });
@@ -229,18 +233,31 @@ io.on('connection', (socket) => {
   socket.on('admin-prev', () => {
     if (currentIndex > 0) {
       currentIndex--;
+      initVotesFor(currentIndex);
       io.emit('state-update', getPayload());
     }
   });
 
+  // Сброс текущего вопроса
   socket.on('admin-reset', () => {
     if (currentIndex >= questions.length) return;
     initVotesFor(currentIndex);
     questions[currentIndex].options.forEach((_, optIdx) => {
       votes[currentIndex][optIdx] = 0;
     });
-    resetCounter[currentIndex] = (resetCounter[currentIndex] || 0) + 1;
+    // Новый миллисекундный штамп — гарантирует мгновенный сброс у всех с первого раза!
+    questionTimestamps[currentIndex] = Date.now();
     io.emit('votes-update', votes[currentIndex]);
+    io.emit('state-update', getPayload());
+  });
+
+  // Полный сброс всей игры к началу
+  socket.on('admin-reset-all', () => {
+    currentIndex = 0;
+    votes = {};
+    gameSessionId = Date.now();
+    questionTimestamps = {};
+    initVotesFor(0);
     io.emit('state-update', getPayload());
   });
 });
