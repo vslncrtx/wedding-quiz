@@ -33,30 +33,54 @@
     }
     
     .content {
-      display: flex; width: 100%; max-width: 1400px;
-      justify-content: space-around; align-items: center; flex: 1;
+      display: flex; width: 100%; max-width: 1450px;
+      justify-content: space-between; align-items: center; flex: 1; gap: 40px;
     }
     
+    /* Блок с вариантами ответов */
     .legend-box {
-      display: flex; flex-direction: column; gap: 16px; max-width: 650px; font-size: 22px;
+      display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 750px; font-size: 21px;
       background: rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      padding: 30px; border-radius: 24px;
+      padding: 26px; border-radius: 24px;
       border: 1px solid rgba(255, 255, 255, 0.15);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
     
-    .legend-item { display: flex; align-items: center; gap: 15px; }
-    
-    .badge {
-      width: 42px; height: 42px; border-radius: 50%; display: flex;
-      align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    .legend-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 15px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px 16px; border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .legend-left {
+      display: flex; align-items: center; gap: 14px; flex: 1;
     }
     
+    .badge {
+      width: 40px; height: 40px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 18px;
+    }
+
+    .legend-text { line-height: 1.3; }
+
+    /* Плашка с процентами справа от варианта */
+    .legend-percent {
+      font-size: 22px; font-weight: 700; color: #f8fafc;
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px; border-radius: 12px;
+      min-width: 72px; text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+    
+    /* Контейнер графика и картинки */
     .chart-container {
-      width: 530px; height: 530px; position: relative;
+      width: 530px; height: 530px; position: relative; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       background: rgba(255, 255, 255, 0.04);
       backdrop-filter: blur(12px);
@@ -197,7 +221,6 @@
       const finalView = document.getElementById('final-view');
 
       if (data.isFinished) {
-        // ПОКАЗЫВАЕМ ФИНАЛ
         quizView.style.display = 'none';
         finalView.style.display = 'flex';
 
@@ -222,7 +245,6 @@
         return;
       }
 
-      // ПОКАЗЫВАЕМ ОБЫЧНЫЙ ВОПРОС
       quizView.style.display = 'flex';
       finalView.style.display = 'none';
 
@@ -242,8 +264,11 @@
         const item = document.createElement('div');
         item.className = 'legend-item';
         item.innerHTML = `
-          <div class="badge" style="background:${colors[idx]}">${letters[idx]}</div>
-          <div>${opt}</div>
+          <div class="legend-left">
+            <div class="badge" style="background:${colors[idx]}">${letters[idx]}</div>
+            <div class="legend-text">${opt}</div>
+          </div>
+          <div class="legend-percent" id="pct-${idx}">0%</div>
         `;
         legend.appendChild(item);
       });
@@ -261,6 +286,15 @@
       const values = Object.values(votesObj);
       const sum = values.reduce((a, b) => a + b, 0);
       document.getElementById('votes-counter').innerText = `Всего голосов: ${sum}`;
+
+      // Пересчитываем проценты для каждого варианта
+      values.forEach((count, idx) => {
+        const pctElem = document.getElementById(`pct-${idx}`);
+        if (pctElem) {
+          const pct = sum > 0 ? Math.round((count / sum) * 100) : 0;
+          pctElem.innerText = `${pct}%`;
+        }
+      });
 
       if (chart) {
         chart.data.datasets[0].data = values;
